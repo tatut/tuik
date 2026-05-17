@@ -1,2 +1,2 @@
 demo: tuik.h demo.c
-	cc -o demo demo.c
+	cc -fsanitize=address -o demo demo.c

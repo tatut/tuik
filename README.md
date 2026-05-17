@@ -8,13 +8,18 @@ Widgets:
 * checkbox
 * select
 * split (horizontal or vertical splitter)
+* box (row or column of multiple widgets)
 * label
 * table
 * button
 
 ## API
 
-All widgets have a constructor named: `<type>* tuik_<type>_new(struct tuik_<type>_options opts);`
+Methods have names like: `tuik_<method>_<type>` (eg. `tuik_render_textarea`).
+Generic macros are provided to call methods without the type
+All widgets have a constructor named: `tuik_<type>* tuik_new_<type>(struct tuik_opts_<type> opts);`
+
+
 
 Widgets also have a similarly named `_render` and event handlers.
 Generic macro variants that dispatch on type are also provided.
