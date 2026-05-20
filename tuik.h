@@ -137,6 +137,12 @@ void tuik_checkbox_keypress(tuik_checkbox *w, tb_event *e);
   tuik_textarea* : tuik_textarea_keypress, \
   tuik_checkbox* : tuik_checkbox_keypress)((widget),(e))
 
+void tuik_textarea_click(tuik_textarea *w, tb_event *e);
+void tuik_checkbox_click(tuik_textarea *w, tb_event *e);
+#define tuik_click(widget, e)                                                  \
+  _Generic((widget), tuik_textarea *                                           \
+           : tuik_textarea_click, tuik_checkbox *                              \
+           : tuik_checkbox_click)((widget), (e))
 
 #define tuik_set_xy(w, _x, _y)                                                 \
   do {                                                                         \
@@ -323,7 +329,6 @@ void _tuik_textarea_ensure_lines_capacity(tuik_textarea *w, size_t desired_capac
 }
 
 void tuik_textarea_keypress(tuik_textarea *w, tb_event *e) {
-
   switch (e->key) {
   case TB_KEY_CTRL_A:
     if(e->mod & TB_MOD_CTRL)
@@ -331,7 +336,7 @@ void tuik_textarea_keypress(tuik_textarea *w, tb_event *e) {
     break;
   case TB_KEY_CTRL_E:
     if(e->mod & TB_MOD_CTRL)
-      w->col = w->lines[w->row]->len + 1;
+      w->col = w->lines[w->row]->len;
     break;
   case TB_KEY_ARROW_LEFT:
     if (w->col > 0)
@@ -342,12 +347,18 @@ void tuik_textarea_keypress(tuik_textarea *w, tb_event *e) {
       w->col += 1; // wrap around
     break;
   case TB_KEY_ARROW_DOWN:
-    if (w->row < w->lines_count)
+    if (w->row < w->lines_count - 1)
       w->row += 1;
+    // ensure col is within bounds
+    if(w->col > w->lines[w->row]->len)
+      w->col = w->lines[w->row]->len;
     break;
   case TB_KEY_ARROW_UP:
     if (w->row > 0)
       w->row -= 1;
+    // ensure col is within bounds
+    if(w->col > w->lines[w->row]->len)
+      w->col = w->lines[w->row]->len;
     break;
   case TB_KEY_ENTER: {
     // insert new line, possibly moving characters after cursor
@@ -368,8 +379,43 @@ void tuik_textarea_keypress(tuik_textarea *w, tb_event *e) {
     w->lines_count = new_lines_count;
     break;
   }
+  default: {
+    if(e->ch) {
+      // regular letter, append it at position
+
+      tuik_textline *line = w->lines[w->row];
+      if(line->len == line->capacity) {
+        tuik_dbg("increase line cap %zu => %zu", line->capacity, line->capacity * 2);
+        line->capacity *= 2;
+        line->data = (char*)TUIK_REALLOC(line->data, line->capacity); // double line capacity
+      }
+      tuik_dbg("before append, line len: %zu, col: %d", line->len, w->col);
+      line->len += 1;
+      for(int i = line->len-1; i >= 0; i--) {
+        line->data[i] = (i > w->col ? line->data[i-1]
+                         : (i == w->col ? e->ch : line->data[i]));
+      }
+      tuik_dbg("after append, line len: %zu, col: %d", line->len, w->col);
+      w->col += 1;
+    }
 
   }
+
+  }
+}
+
+void tuik_textarea_click(tuik_textarea *w, tb_event *e) {
+  int new_col = e->x - w->rect.x - 4; // check line count to determine how many to reserve for line numbers
+  int new_row = e->y - w->rect.y - 1; // BOUNDS!
+  w->col = new_col;
+  w->row = new_row;
+  if(w->row < 0) w->row = 0;
+  if(w->row > w->lines_count - 1) w->row = w->lines_count - 1;
+  if(w->col < 0) w->col = 0;
+  if(w->col > w->lines[w->row]->len) w->col = w->lines[w->row]->len;
+  tuik_dbg("new col: %d, row: %d", new_col, new_row);
+
+
 }
 
 const char *_tuik_strdup(const char *str, size_t *len) {

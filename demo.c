@@ -61,6 +61,8 @@ int main(int argc, char **argv) {
     if(ret == TB_ERR_POLL && tb_last_errno() == EINTR) continue;
     else if(e.type == TB_EVENT_KEY) {
       tuik_keypress(edit, &e);
+    } else if(e.type == TB_EVENT_MOUSE) {
+      tuik_click(edit, &e);
     } else if(e.type == TB_EVENT_RESIZE) {
       box->rect = tuik_fullscreen();
       tuik_pack(box);
