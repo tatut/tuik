@@ -1,8 +1,44 @@
-/* TUIK Textual User Interface Kit. A widget library for TUIs using termbox2. */
+/* TUIK Textual User Interface Kit. A widget library for TUIs using termbox2.
+ *
+ * Widgets are separate struct types, all must start with the TUIK_WIDGET fields
+ * which contains pointer to the vtable and size information.
+ *
+ */
 
 #include "termbox2.h"
 #include <stddef.h>
 #include <stdbool.h>
+
+typedef struct tuik_opts_add {
+  // constraints for packing (0 is unset)
+  uint16_t min_width, max_width, min_height, max_height;
+  uint8_t flags;
+} tuik_opts_add;
+
+/* fields shared by all widget types */
+#define TUIK_WIDGET \
+  tuik_vtable *type;                            \
+  uint16_t x, y, w, h;
+
+/* You can cast unknown widget type to this */
+typedef struct tuik_widget {
+  TUIK_BASE_WIDGET
+} tuik_widget;
+
+
+/* widget type vtable entry, points to the implementation types of widgets (render, keypress, etc) */
+typedef struct tuik_vtable {
+  void (*_tuik_render)(void*);
+  bool (*_tuik_keypress)(void*, tb_event*);
+  bool (*_tuik_click)(void*, tb_event*);
+
+  /* Only for containers, others should panic */
+  void (*_tuik_add)(void*, void*,tuik_opts_add);
+  void (*_tuik_pack)(void*);
+
+  enum TUIK_TYPE type;
+} tuik_vtable;
+
 
 #define DO_TYPES(X)                                                            \
   X(textarea)                                                                  \
@@ -163,6 +199,7 @@ void tuik_checkbox_click(tuik_textarea *w, tb_event *e);
            : TUIK_TYPE_textarea, tuik_checkbox *                               \
            : TUIK_TYPE_checkbox, tuik_box *                                    \
            : TUIK_TYPE_box)
+
 
 #define tuik_add(container, w, ...)                                            \
   _Generic((container), tuik_box *                                             \
